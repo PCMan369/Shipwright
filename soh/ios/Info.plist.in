@@ -36,6 +36,8 @@
     <true/>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.games</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>HarkinianPad uses your local network to connect to Anchor multiplayer sessions.</string>
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <true/>
     <key>UIFileSharingEnabled</key>

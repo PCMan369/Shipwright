@@ -140,8 +140,7 @@ file(GLOB_RECURSE soh__ CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "
 list(APPEND soh__ ${CMAKE_CURRENT_SOURCE_DIR}/soh/Enhancements/speechsynthesizer/DarwinSpeechSynthesizer.mm)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-    list(FILTER soh__ EXCLUDE REGEX "^soh/Network/")
-    list(FILTER soh__ EXCLUDE REGEX "^soh/SohGui/SohMenuNetwork\\.cpp$")
+    # Keep Anchor networking sources in the iOS target.
     list(APPEND soh__ ${CMAKE_CURRENT_SOURCE_DIR}/ios/HarkinianPadTouchControls.mm ${CMAKE_CURRENT_SOURCE_DIR}/ios/HarkinianPadModImport.mm)
     set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ios/HarkinianPadModImport.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 endif()
@@ -336,6 +335,26 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
     else()
         set(SDL2-NET-INCLUDE ${SDL_NET_INCLUDE_DIRS})
     endif()
+else()
+    # Build the pinned SDL2_net release against libultraship's existing static SDL2.
+    FetchContent_Declare(
+        SDL2_net
+        GIT_REPOSITORY https://github.com/libsdl-org/SDL_net.git
+        GIT_TAG 669e75b84632e2c6cc5c65974ec9e28052cb7a4e
+    )
+    FetchContent_MakeAvailable(SDL2_net)
+
+    # Network.h expects the installed SDL2/SDL_net.h layout. SDL2_net's
+    # build-tree header is at its source root, so mirror it in the shared
+    # compatibility include directory used by the other iOS dependencies.
+    set(HARKINIANPAD_SDL2_NET_COMPAT_INCLUDE_DIR "${CMAKE_BINARY_DIR}/harkinianpad-include")
+    file(MAKE_DIRECTORY "${HARKINIANPAD_SDL2_NET_COMPAT_INCLUDE_DIR}/SDL2")
+    file(COPY "${sdl2_net_SOURCE_DIR}/SDL_net.h"
+        DESTINATION "${HARKINIANPAD_SDL2_NET_COMPAT_INCLUDE_DIR}/SDL2"
+    )
+    target_include_directories(SDL2_net INTERFACE
+        "$<BUILD_INTERFACE:${HARKINIANPAD_SDL2_NET_COMPAT_INCLUDE_DIR}>"
+    )
 endif()
 
 if (ESPEAK)
@@ -406,7 +425,6 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         "$<$<CONFIG:Debug>:_DEBUG>"
         "$<$<CONFIG:Release>:NDEBUG>"
-        "SOH_DISABLE_NETWORKING;"
         "__IOS__;"
         "F3DEX_GBI_2;"
         "_CONSOLE;"
@@ -762,6 +780,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
         "torch;"
         SDL2::SDL2-static
         SDL2::SDL2main
+        SDL2_net::SDL2_net-static
         Ogg::ogg
         Vorbis::vorbis
         Vorbis::vorbisenc
